@@ -1,23 +1,26 @@
 import pandas as pd
-from parsing_module import set_params, get_number_of_pages, get_data_from_page
+from parsing_module import set_params, get_number_of_pages, get_data_from_page, hotel_data
 import time
+import asyncio
 
 
-def parse_all_pages(params):
+async def parse_all_pages(params):
     """parse required information (titles and prices) from all found pages"""
 
     number_of_page = get_number_of_pages(params)
     print(f"Количество страниц: {number_of_page}")
 
-    all_hotel_names = list()
-    all_hotel_prices = list()
-
+    # all_hotel_names = list()
+    # all_hotel_prices = list()
+    tasks = []
     for current_page_number in range(number_of_page):
-        hotel_names, hotel_prices = get_data_from_page(current_page_number, params)
-        all_hotel_names += hotel_names
-        all_hotel_prices += hotel_prices
-
+        task = asyncio.create_task(get_data_from_page(current_page_number, params))
+        tasks.append(task)
         print(f"Обработана {current_page_number + 1} страница")
+    await asyncio.gather(*tasks)
+
+    all_hotel_names = [i[0] for i in hotel_data]
+    all_hotel_prices = [i[1] for i in hotel_data]
 
     df = pd.DataFrame({"Отель": all_hotel_names, "Цена": all_hotel_prices})
     df.to_excel("output.xlsx", index=False)
@@ -45,7 +48,7 @@ def main():
                         number_of_adults,
                         number_of_children,
                         number_of_rooms)
-    parse_all_pages(params)
+    asyncio.run(parse_all_pages(params))
 
 
 if __name__ == '__main__':

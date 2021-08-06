@@ -1,10 +1,12 @@
 import requests
 from bs4 import BeautifulSoup
+import aiohttp
 
 host = "https://www.booking.com"
 headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.135 Safari/537.36',
     }
+hotel_data = []
 
 
 def turn_to_digit(dirty_string: str):
@@ -13,6 +15,7 @@ def turn_to_digit(dirty_string: str):
         if i.isdigit():
             clear_string += i
     return int(clear_string)
+
 
 # fix date
 def set_params(place,
@@ -62,12 +65,16 @@ def get_number_of_pages(params, search_page_url=f"{host}/searchresults.ru.html")
     return last_page_number
 
 
-def get_data_from_page(current_page_number, params: dict, search_page_url=f"{host}/searchresults.ru.html"):
+async def get_data_from_page(current_page_number: int, params: dict, search_page_url=f"{host}/searchresults.ru.html"):
     """get required data (titles and prices) from a single page"""
+    global hotel_data
     params["offset"] = str(current_page_number * 25)
-    response = requests.get(url=search_page_url, headers=headers, params=params)
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url=search_page_url, headers=headers, params=params) as response:
+            search_page_html = await response.text()
+    # response = requests.get(url=search_page_url, headers=headers, params=params)
     # print(response.url)
-    search_page_html = response.content
+    # search_page_html = response.content
     search_page_soup = BeautifulSoup(search_page_html, "lxml")
     hotel_cards = search_page_soup.find_all("div", class_=['sr_item', 'sr_item_new', 'sr_item_default',
                                                            'sr_property_block', 'sr_flex_layout'])
@@ -75,14 +82,14 @@ def get_data_from_page(current_page_number, params: dict, search_page_url=f"{hos
     if len(hotel_cards) == 0:
         print("Информация отсутствует.")
 
-    hotel_names = list()
-    hotel_prices = list()
+    hotel_data = []
     for hotel_card in hotel_cards:
-        hotel_names.append(hotel_card.find("span", class_="sr-hotel__name").text)
+        hotel_name = hotel_card.find("span", class_="sr-hotel__name").text
 
         # create a better way
         price_container = hotel_card.find_all("div", class_="prco-inline-block-maker-helper")[1]
-        hotel_prices.append(price_container.find("div", class_=['bui-price-display__value',
-                                                                'prco-inline-block-maker-helper']).text)
+        hotel_price = price_container.find("div", class_=['bui-price-display__value',
+                                                          'prco-inline-block-maker-helper']).text
+        hotel_data.append([hotel_name, hotel_price])
 
-    return hotel_names, hotel_prices
+    return hotel_data
