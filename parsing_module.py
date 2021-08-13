@@ -12,7 +12,7 @@ hotel_data = []
 page_count = 0
 
 
-def turn_to_digit(dirty_string: str):
+def turn_to_digit(dirty_string: str) -> int:
     clear_string = ""
     for i in dirty_string:
         if i.isdigit():
@@ -27,7 +27,7 @@ def set_params(place: str,
                number_of_adults: str,
                number_of_children: str,
                number_of_rooms: str
-               ):
+               ) -> dict:
 
     """set params for the parsing request"""
 
@@ -46,7 +46,7 @@ def set_params(place: str,
     return params
 
 
-async def get_number_of_pages(params, search_page_url=f"{host}/searchresults.ru.html"):
+async def get_number_of_pages(params: dict, search_page_url: str = f"{host}/searchresults.ru.html") -> int:
     """get the number of searched pages from pagination"""
     async with aiohttp.ClientSession() as session:
         async with session.get(url=search_page_url, headers=headers, params=params) as response:
@@ -64,7 +64,7 @@ async def get_number_of_pages(params, search_page_url=f"{host}/searchresults.ru.
 async def get_data_from_page(current_page_number: int,
                              params: dict,
                              session: aiohttp.ClientSession,
-                             search_page_url=f"{host}/searchresults.ru.html"):
+                             search_page_url: str = f"{host}/searchresults.ru.html"):
     """get required data (titles and prices) from a single page"""
     global hotel_data, page_count
     params["offset"] = str(current_page_number * 25)
@@ -78,7 +78,6 @@ async def get_data_from_page(current_page_number: int,
     # if len(hotel_cards) == 0:
     #     print(f"Информация отсутствует в {current_page_number} стр")
 
-    hotel_data = []
     for hotel_card in hotel_cards:
         hotel_name = hotel_card.find("span", class_="sr-hotel__name").text
 
@@ -89,10 +88,9 @@ async def get_data_from_page(current_page_number: int,
 
     page_count += 1
     print(f"Обработано {page_count} стр")
-    return hotel_data
 
 
-async def parse_all_pages(params):
+async def parse_all_pages(params: dict):
     """parse required information (titles and prices) from all found pages"""
 
     number_of_page = await get_number_of_pages(params)
